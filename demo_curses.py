@@ -8,18 +8,24 @@ class HitmanDemoCurses:
     def __init__(self):
         self.hr = hm.HitmanReferee()
         self.status = self.hr.start_phase1()
-        self.knowledge = []
+        self.knowledge_hear = {}
         self.map_info = {}
+        self.listening_dist = 2
+        possible_offset = range(-self.listening_dist, self.listening_dist + 1)
+        self.offsets = list(product(possible_offset, possible_offset))
         for i in range(self.status['n']):
             for j in range(self.status['m']):
                 self.map_info[(i, j)] = -1
+                self.knowledge_hear[(i, j)] = -1
 
         self.scr = curses.initscr()
         curses.start_color()
         self.h1 = 8
-        self.win_map = curses.newwin(self.status['n'], self.status['m']+1, self.h1, 0)
+        self.win_map = curses.newwin(self.status['n'], self.status['m']+1, self.h1, 1)
         self.win_status = curses.newwin(10, 30, self.status['n'] + self.h1 + 2, 1)
-        self.box = curses.newwin(12, 32, self.status['n'] + self.h1 + 1, 0)
+        self.boxS = curses.newwin(12, 32, self.status['n'] + self.h1 + 1, 0)
+        self.win_debug = curses.newwin(40, 30, self.status['n'] + self.h1 + 2, 32)
+        self.debug_count = 0
 
     def main(self, window):
         window.addstr(0, 0, "Welcome to the hitman demo.")
@@ -28,7 +34,7 @@ class HitmanDemoCurses:
         window.addstr(4, 0, "Map size: {}*{}".format(self.status['n'], self.status['m']))
         window.addstr(5, 0, "Guards: {}".format(self.status['guard_count']))
         window.addstr(6, 0, "Civilians: {}".format(self.status['civil_count']))
-        self.print_movement(window)
+        self.analyse_movement(window)
         while True:
             window.refresh()
             key = window.getkey()
@@ -38,21 +44,74 @@ class HitmanDemoCurses:
                 case "d": self.status = self.hr.turn_clockwise()
                 case "q": break
                 case _: self.status['status'] = "Unknown movement"
-            self.print_movement(window)
+            self.analyse_movement(window)
 
-    def print_movement(self, window):
+    def analyse_movement(self, window):
         if self.status['status'] == "OK":
-            self.knowledge.append(self.status)
+            self.knowledge_hear[self.status['position']] = self.status['hear']
             for (x, y), content in self.status['vision']:
                 self.map_info[(x, y)] = content
-            count, zone = self.get_listening()
-            if count < 5:
-                if count == self.status['hear']:
-                    for i, j in zone:
-                        if self.map_info[(i, j)] == -1:
-                            self.map_info[(i, j)] = 0
+            if self.status['vision'] and self.status['vision'][-1][1] in [
+                hm.HC.CIVIL_N,
+                hm.HC.CIVIL_E,
+                hm.HC.CIVIL_S,
+                hm.HC.CIVIL_W,
+                hm.HC.GUARD_N,
+                hm.HC.GUARD_E,
+                hm.HC.GUARD_S,
+                hm.HC.GUARD_W,
+            ]:
+                pos_x, pos_y = self.status['vision'][-1][0]
+                for i, j in self.offsets:
+                    position = (pos_x + i, pos_y + j)
+                    if position in self.map_info:
+                        self.deduce_listening(position)
+            self.deduce_listening(self.status['position'])
             self.print_map(self.win_map)
         self.print_status(self.win_status)
+
+    def deduce_listening(self, position: Tuple[int, int]):
+        count, zone = self.get_listening(position)
+        if count < 5:
+            if count == self.knowledge_hear[position]:
+                for i, j in zone:
+                    if self.map_info[(i, j)] == -1:
+                        self.map_info[(i, j)] = 0
+    
+
+    def get_listening(self, position: Tuple[int, int]) -> Tuple[int, list]:
+        dist = self.listening_dist
+        offsets = self.offsets
+        count = 0
+        x, y = position
+        zone = []
+        for i, j in offsets:
+            pos_x, pos_y = x + i, y + j
+            self.print_debug(self.win_debug, "pos: {},{}".format(y, j))
+            if (pos_x, pos_y) not in self.map_info:
+                continue
+            zone.append((pos_x, pos_y))
+            if self.map_info[(pos_x, pos_y)] in [
+                hm.HC.CIVIL_N,
+                hm.HC.CIVIL_E,
+                hm.HC.CIVIL_S,
+                hm.HC.CIVIL_W,
+                hm.HC.GUARD_N,
+                hm.HC.GUARD_E,
+                hm.HC.GUARD_S,
+                hm.HC.GUARD_W,
+            ]:
+                count += 1
+            if count == 5:
+                break
+        return count, zone
+
+    def print_debug(self, window, message):
+        window.addstr(self.debug_count, 0, message)
+        window.refresh()
+        self.debug_count += 1
+        if self.debug_count == window.getmaxyx()[0]:
+            self.debug_count = 0
 
     def print_map(self, window):
         for i, j in product(range(self.status['n']), range(self.status['m'])):
@@ -75,19 +134,22 @@ class HitmanDemoCurses:
                 case -1: window.addch(i, j, "?")
         x, y = self.status['position']
         attr = curses.A_BOLD
-        # window.move(x, y)
         self.scr.move(x + self.h1, y)
-        match self.status['orientation']:
-            case hm.HC.N: window.addch(x, y, ">", attr)
-            case hm.HC.E: window.addch(x, y, "v", attr)
-            case hm.HC.S: window.addch(x, y, "<", attr)
-            case hm.HC.W: window.addch(x, y, "^", attr)
+
+        try:
+            match self.status['orientation']:
+                case hm.HC.N: window.addch(x, y, ">", attr)
+                case hm.HC.E: window.addch(x, y, "v", attr)
+                case hm.HC.S: window.addch(x, y, "<", attr)
+                case hm.HC.W: window.addch(x, y, "^", attr)
+        except:
+            self.print_debug(self.win_debug, "pos: {},{}".format(x, y))
 
         window.refresh()
         
     def print_status(self, window):
-        self.box.box()
-        self.box.refresh()
+        self.boxS.box()
+        self.boxS.refresh()
         window.erase()
         window.addstr(1-1, 0, "Status: {}".format(self.status['status']))
         window.addstr(2-1, 0, "Penalties: {}".format(self.status['penalties']))
@@ -98,36 +160,7 @@ class HitmanDemoCurses:
         window.addstr(7-1, 0, "Vision: {}".format(len(self.status['vision'])))
         for i, (x, y) in enumerate(self.status['vision']):
             window.addstr(8-1+i, 8, "{},{}".format(x, y))
-
         window.refresh()
-
-    def get_listening(self, dist=2) -> Tuple[int, list]:
-        count = 0
-        possible_offset = range(-dist, dist + 1)
-        offsets = product(possible_offset, repeat=2)
-        x, y = self.status['position']
-        zone = []
-        for i, j in offsets:
-            pos_x, pos_y = x + i, y + j
-            if (pos_x, pos_y) not in self.map_info:
-                continue
-            zone.append((pos_x, pos_y))
-            if self.map_info[(pos_x, pos_y)] in [
-                hm.HC.CIVIL_N,
-                hm.HC.CIVIL_E,
-                hm.HC.CIVIL_S,
-                hm.HC.CIVIL_W,
-                hm.HC.GUARD_N,
-                hm.HC.GUARD_E,
-                hm.HC.GUARD_S,
-                hm.HC.GUARD_W,
-            ]:
-                count += 1
-            if count == 5:
-                break
-
-        return count, zone
-    
 
 if __name__ == "__main__":
     demo = HitmanDemoCurses()
