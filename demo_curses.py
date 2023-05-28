@@ -8,32 +8,37 @@ class HitmanDemoCurses:
     def __init__(self):
         self.hr = hm.HitmanReferee()
         self.status = self.hr.start_phase1()
+        self.n = self.status['n']
+        self.m = self.status['m']
         self.knowledge_hear = {}
         self.map_info = {}
         self.listening_dist = 2
         possible_offset = range(-self.listening_dist, self.listening_dist + 1)
         self.offsets = list(product(possible_offset, possible_offset))
-        for i in range(self.status['n']):
-            for j in range(self.status['m']):
+        for i in range(self.n):
+            for j in range(self.m):
                 self.map_info[(i, j)] = -1
                 self.knowledge_hear[(i, j)] = -1
 
         self.scr = curses.initscr()
         curses.start_color()
-        self.h1 = 8
-        self.win_map = curses.newwin(self.status['n'], self.status['m']+1, self.h1, 1)
-        self.win_status = curses.newwin(10, 30, self.status['n'] + self.h1 + 2, 1)
-        self.boxS = curses.newwin(12, 32, self.status['n'] + self.h1 + 1, 0)
-        self.win_debug = curses.newwin(40, 30, self.status['n'] + self.h1 + 2, 32)
-        self.debug_count = 0
+        self.max_y, self.max_x = self.scr.getmaxyx()
+        self.y = [0, 3, 9, max(self.n, 10)+12+1 , self.max_y - 1]
+        self.x = [0, 30, self.m+5, self.max_x - 1]
+        self.win_meta = curses.newwin(self.y[2]-self.y[1], self.max_x-self.x[1], self.y[1], self.x[1])
+        self.win_list = curses.newwin(self.y[2]-self.y[1], self.x[1], self.y[1], 0)
+        self.win_map = curses.newwin(self.n, self.m+1, self.y[2], 1)
+        self.win_status = curses.newwin(10, 30, self.y[2], self.x[2]+1)
+        self.boxS = curses.newwin(12, 32, self.y[2]-1, self.x[2])
+        self.win_info = curses.newwin(self.max_y - self.y[3] - 5, self.max_x, self.y[3], 2)
+        self.info_count = 0
 
     def main(self, window):
         window.addstr(0, 0, "Welcome to the hitman demo.")
         window.addstr(1, 0, "The map is turned 90 degrees clockwise.")
-        window.addstr(2, 0, "w: move forward, a: turn left, d: turn right, q: quit")
-        window.addstr(4, 0, "Map size: {}*{}".format(self.status['n'], self.status['m']))
-        window.addstr(5, 0, "Guards: {}".format(self.status['guard_count']))
-        window.addstr(6, 0, "Civilians: {}".format(self.status['civil_count']))
+        self.print_list(self.win_list)
+        self.print_meta(self.win_meta)
+
         self.analyse_movement(window)
         while True:
             window.refresh()
@@ -42,6 +47,7 @@ class HitmanDemoCurses:
                 case "w": self.status = self.hr.move()
                 case "a": self.status = self.hr.turn_anti_clockwise()
                 case "d": self.status = self.hr.turn_clockwise()
+                case "s": self.send_content(self.win_info)
                 case "q": break
                 case _: self.status['status'] = "Unknown movement"
             self.analyse_movement(window)
@@ -87,7 +93,7 @@ class HitmanDemoCurses:
         zone = []
         for i, j in offsets:
             pos_x, pos_y = x + i, y + j
-            self.print_debug(self.win_debug, "pos: {},{}".format(y, j))
+            # self.print_info(self.win_info, "pos: {},{}".format(y, j))
             if (pos_x, pos_y) not in self.map_info:
                 continue
             zone.append((pos_x, pos_y))
@@ -106,15 +112,38 @@ class HitmanDemoCurses:
                 break
         return count, zone
 
-    def print_debug(self, window, message):
-        window.addstr(self.debug_count, 0, message)
+    def send_content(self, window):
+        observed = self.hr.send_content(self.map_info)
+        self.print_info(window, "*" * 10)
+        self.print_info(window, "Content sent")
+        self.print_info(window, "Observed: {}".format(observed))
+        self.print_info(window, "*" * 10)
+
+    def print_info(self, window, message):
+        window.addstr(self.info_count, 0, message)
+        self.info_count += 1
+        if self.info_count == window.getmaxyx()[0]:
+            self.info_count = 0
+        window.addstr(self.info_count, 0, " " * (window.getmaxyx()[1]-1))
+        # self.scr.move(self.info_count, 0)
         window.refresh()
-        self.debug_count += 1
-        if self.debug_count == window.getmaxyx()[0]:
-            self.debug_count = 0
+
+    def print_list(self, window):
+        window.addstr(0, 0, "w: move forward")
+        window.addstr(1, 0, "a: turn left")
+        window.addstr(2, 0, "d: turn right")
+        window.addstr(3, 0, "s: send content")
+        window.addstr(4, 0, "q: quit")
+        window.refresh()
+
+    def print_meta(self, window):
+        window.addstr(0, 0, "Map size: {}*{}".format(self.n, self.m))
+        window.addstr(1, 0, "Guards: {}".format(self.status['guard_count']))
+        window.addstr(2, 0, "Civilians: {}".format(self.status['civil_count']))
+        window.refresh()
 
     def print_map(self, window):
-        for i, j in product(range(self.status['n']), range(self.status['m'])):
+        for i, j in product(range(self.n), range(self.m)):
             content = self.map_info[(i, j)]
             match content:
                 case hm.HC.EMPTY: window.addch(i, j, " ")
@@ -133,8 +162,8 @@ class HitmanDemoCurses:
                 case 0: window.addch(i, j, ".")
                 case -1: window.addch(i, j, "?")
         x, y = self.status['position']
-        attr = curses.A_BOLD
-        self.scr.move(x + self.h1, y)
+        attr = curses.A_STANDOUT
+        # self.scr.move(x + self.h1, y+1)
 
         try:
             match self.status['orientation']:
@@ -143,7 +172,8 @@ class HitmanDemoCurses:
                 case hm.HC.S: window.addch(x, y, "<", attr)
                 case hm.HC.W: window.addch(x, y, "^", attr)
         except:
-            self.print_debug(self.win_debug, "pos: {},{}".format(x, y))
+            # self.print_info(self.win_info, "pos: {},{}".format(x, y))
+            pass
 
         window.refresh()
         
