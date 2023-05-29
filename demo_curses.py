@@ -25,17 +25,32 @@ class HitmanDemoCurses:
         self.max_y, self.max_x = self.scr.getmaxyx()
         self.y = [0, 3, 9, max(self.n, 10)+12+1 , self.max_y - 1]
         self.x = [0, 30, self.m+5, self.max_x - 1]
+        off_y = (self.max_y - self.y[3]) / 3
+        off_x = (self.max_x - self.x[1] - 15) / 2
+        self.y = [int(i+off_y) for i in self.y]
+        self.x = [int(i+off_x) for i in self.x]
         self.win_meta = curses.newwin(self.y[2]-self.y[1], self.max_x-self.x[1], self.y[1], self.x[1])
-        self.win_list = curses.newwin(self.y[2]-self.y[1], self.x[1], self.y[1], 0)
-        self.win_map = curses.newwin(self.n, self.m+1, self.y[2], 1)
+        self.win_list = curses.newwin(self.y[2]-self.y[1], self.x[1], self.y[1], self.x[0])
+        self.win_map = curses.newwin(self.n, self.m+1, self.y[2], self.x[0])
         self.win_status = curses.newwin(10, 30, self.y[2], self.x[2]+1)
         self.boxS = curses.newwin(12, 32, self.y[2]-1, self.x[2])
-        self.win_info = curses.newwin(self.max_y - self.y[3] - 5, self.max_x, self.y[3], 2)
+        self.win_info = curses.newwin(self.max_y - self.y[3] - 5, self.max_x, self.y[3], self.x[0])
         self.info_count = 0
+        
+        curses.use_default_colors()
+        for i in range(0, curses.COLORS-1):
+            curses.init_pair(i + 1, -1, i)
+            # self.scr.addstr(str(i), curses.color_pair(i))
+        self.text_status = ["OK", "Err: invalid move", "Unknown movement"]
+        self.status2color = {
+            "OK": curses.color_pair(72),
+            "Err: invalid move": curses.color_pair(221),
+            "Unknown movement": curses.color_pair(203),
+        }
 
     def main(self, window):
-        window.addstr(0, 0, "Welcome to the hitman demo.")
-        window.addstr(1, 0, "The map is turned 90 degrees clockwise.")
+        window.addstr(self.y[0]+0, self.x[0]+0, "Welcome to the hitman demo.")
+        window.addstr(self.y[0]+1, self.x[0]+0, "The map is turned 90 degrees clockwise.")
         self.print_list(self.win_list)
         self.print_meta(self.win_meta)
 
@@ -49,7 +64,7 @@ class HitmanDemoCurses:
                 case "d": self.status = self.hr.turn_clockwise()
                 case "s": self.send_content(self.win_info)
                 case "q": break
-                case _: self.status['status'] = "Unknown movement"
+                case _: self.status['status'] = self.text_status[2]
             self.analyse_movement(window)
 
     def analyse_movement(self, window):
@@ -181,7 +196,8 @@ class HitmanDemoCurses:
         self.boxS.box()
         self.boxS.refresh()
         window.erase()
-        window.addstr(1-1, 0, "Status: {}".format(self.status['status']))
+        attr = self.status2color[self.status['status']]
+        window.addstr(1-1, 0, "Status: {}".format(self.status['status']), attr)
         window.addstr(2-1, 0, "Penalties: {}".format(self.status['penalties']))
         window.addstr(3-1, 0, "Is in guard range: {}".format(self.status['is_in_guard_range']))
         window.addstr(4-1, 0, "Position: {}".format(self.status['position']))
