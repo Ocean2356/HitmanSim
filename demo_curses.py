@@ -196,7 +196,11 @@ class HitmanDemoCurses:
         self.boxS.box()
         self.boxS.refresh()
         window.erase()
-        attr = self.status2color[self.status['status']]
+        # attr = self.status2color[self.status['status']]
+        if self.status['status'] == self.text_status[0]:
+            attr = curses.A_NORMAL
+        else:
+            attr = curses.A_REVERSE
         window.addstr(1-1, 0, "Status: {}".format(self.status['status']), attr)
         window.addstr(2-1, 0, "Penalties: {}".format(self.status['penalties']))
         window.addstr(3-1, 0, "Is in guard range: {}".format(self.status['is_in_guard_range']))
@@ -209,5 +213,11 @@ class HitmanDemoCurses:
         window.refresh()
 
 if __name__ == "__main__":
-    demo = HitmanDemoCurses()
-    curses.wrapper(demo.main)
+    try:
+        demo = HitmanDemoCurses()
+        curses.wrapper(demo.main)
+    except curses.error:
+        curses.endwin()
+        print("Curses error.")
+        print("This game needs at least 50x24 terminal size.")
+        

@@ -52,8 +52,8 @@ Détails à représenter:
 transmettre les perceptions de Hitman à la connaissance de la carte
 sauvegarder la base de connaissance dans python
 
-- point clé
-  - l'idée de nombre dans SAT
+- Remarque :
+  - Hitman est invisible pour les gardes quand il est dans la même case qu'un invité
 
 ## 3. Modélisation STRIPS de la phase 2
 
