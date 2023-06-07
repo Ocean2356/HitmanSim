@@ -5,6 +5,11 @@ from enum import Enum
 import cmd
 
 
+class bcolors:
+    FRONTIER = '\033[0;36;47m'
+    ENDC = '\033[0m'
+
+
 class HC(Enum):
     UNKNOWN = -1
     NOT_PERSON = 0
@@ -201,12 +206,20 @@ class HitmanDemo(cmd.Cmd):
                     continue
                 if self.map_info[(pos_x, pos_y)] == HC.UNKNOWN:
                     frontier_tmp.append((pos_x, pos_y))
+        print("Frontier tmp: {}".format(frontier_tmp))
+        print("Frontier: {}".format(self.frontier))
+        to_remove = []
         for (x, y) in self.frontier:
+            print("check frontier: {}".format((x, y)))
             if self.map_info[(x, y)] != HC.UNKNOWN:
-                self.frontier.remove((x, y))
+                # self.frontier.remove((x, y))
+                to_remove.append((x, y))
+                print("Remove frontier: {}".format((x, y)))
+        for (x, y) in to_remove:
+            self.frontier.remove((x, y))
         for (x, y) in frontier_tmp:
-            if self.map_info[(x, y)] != HC.UNKNOWN:
-                continue
+            # if self.map_info[(x, y)] != HC.UNKNOWN:
+            #     continue
             self.frontier.append((x, y))
 
 
@@ -223,6 +236,8 @@ class HitmanDemo(cmd.Cmd):
         # the map is turned 90 degrees clockwise
         for x in range(self.status['n']):
             for y in range(self.status['m']):
+                if (x, y) in self.frontier:
+                    print(bcolors.FRONTIER, end="")
                 if (x, y) == self.status['position']:
                     match self.status['orientation']:
                         case hm.HC.N: print(">", end="")
@@ -248,6 +263,8 @@ class HitmanDemo(cmd.Cmd):
                     case HC.NOT_PERSON: print(".", end="")
                     case HC.PERSON: print("&", end="")
                     case _: print("?", end="")
+                if (x, y) in self.frontier:
+                    print(bcolors.ENDC, end="")
             print()
 
 
