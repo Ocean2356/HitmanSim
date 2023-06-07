@@ -55,6 +55,15 @@ sauvegarder la base de connaissance dans python
 - Remarque :
   - Hitman est invisible pour les gardes quand il est dans la même case qu'un invité
 
+- planifier :
+	- Phase 1 : DFS rapid
+	- Phase 2 : si information non complète, alors DFS profond de l'autre côté
+
+- DFS :
+	- Cost calculated from penalties and information added.
+	- Graph maintained actively
+	- Stop when cost become negative
+
 ## 3. Modélisation STRIPS de la phase 2
 
 ## 4. Programmation Python phase 2
