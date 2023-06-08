@@ -23,7 +23,7 @@ class HitmanDemoCurses:
         self.scr = curses.initscr()
         curses.start_color()
         self.max_y, self.max_x = self.scr.getmaxyx()
-        self.y = [0, 3, 9, max(self.n, 10)+12+1 , self.max_y - 1]
+        self.y = [0, 3, 9, max(self.n, 10)+12+1, self.max_y - 1]
         self.x = [0, 30, self.m+5, self.max_x - 1]
         off_y = (self.max_y - self.y[3]) / 3
         off_x = (self.max_x - self.x[1] - 15) / 2
@@ -54,7 +54,7 @@ class HitmanDemoCurses:
         self.print_list(self.win_list)
         self.print_meta(self.win_meta)
 
-        self.analyse_movement(window)
+        self.analyse_movement()
         while True:
             window.refresh()
             key = window.getkey()
@@ -63,11 +63,12 @@ class HitmanDemoCurses:
                 case "a": self.status = self.hr.turn_anti_clockwise()
                 case "d": self.status = self.hr.turn_clockwise()
                 case "s": self.send_content(self.win_info)
+                # case "p": self.pause()
                 case "q": break
                 case _: self.status['status'] = self.text_status[2]
-            self.analyse_movement(window)
+            self.analyse_movement()
 
-    def analyse_movement(self, window):
+    def analyse_movement(self):
         if self.status['status'] == "OK":
             self.knowledge_hear[self.status['position']] = self.status['hear']
             for (x, y), content in self.status['vision']:
@@ -126,6 +127,12 @@ class HitmanDemoCurses:
             if count == 5:
                 break
         return count, zone
+
+    # def pause(self):
+    #     self.scr.addstr(str(self.hr))
+    #     self.scr.refresh()
+    #     self.scr.getkey()
+    #     self.main(self.scr)
 
     def send_content(self, window):
         observed = self.hr.send_content(self.map_info)
@@ -220,4 +227,3 @@ if __name__ == "__main__":
         curses.endwin()
         print("Curses error.")
         print("This game needs at least 50x24 terminal size.")
-        
