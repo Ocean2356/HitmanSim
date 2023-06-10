@@ -1,4 +1,6 @@
 import subprocess
+import sys
+import os
 
 from referee.hitman.hitman import HitmanReferee, HC
 from itertools import product, combinations
@@ -287,6 +289,13 @@ class Solveur:
                     return l
 
 def main():
+    try:
+        os.mkdir("tmp")
+    except:
+        pass
+    os.chdir("tmp")
+    saved_stdout = sys.stdout
+    sys.stdout = open('log.txt', 'w')
     arb = HitmanReferee()
     sv = Solveur(arb)
     print("Nombre de variables: " + str(sv.nb_variables))
@@ -296,5 +305,6 @@ def main():
     print(sv.infos_carte)
     print(sv.clauses)
     print(sv.test_gophersat_carte("phase1.cnf"))
+    sys.stdout = saved_stdout
 
 main()

@@ -102,7 +102,6 @@ class HitmanDemoCurses:
     
 
     def get_listening(self, position: Tuple[int, int]) -> Tuple[int, list]:
-        dist = self.listening_dist
         offsets = self.offsets
         count = 0
         x, y = position
