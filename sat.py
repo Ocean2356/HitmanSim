@@ -1,10 +1,6 @@
 import subprocess
-import sys
-import os
-
 from referee.hitman.hitman import HitmanReferee, HC
 from itertools import product, combinations
-from subprocess import check_output
 
 '''
 Codage variables pour GopherSAT:
@@ -67,17 +63,28 @@ class Solveur:
                 champs.append((new_c, new_l))
         return champs
 
+    def peut_avancer(self):
+        if ((self.etat_hitman['orientation'] == HC.N and self.etat_hitman['position'][1] == self.m-1)
+            or (self.etat_hitman['orientation'] == HC.E and self.etat_hitman['position'][0] == self.n-1)
+            or (self.etat_hitman['orientation'] == HC.S and self.etat_hitman['position'][1] == 0)
+            or (self.etat_hitman['orientation'] == HC.W and self.etat_hitman['position'][0] == 0)):
+            return False
+        else:
+            return True
+
     def avancer(self):
-        etat_retourne = self.arbitre.move()
-        self.etat_hitman['etat'] = etat_retourne['status']
-        self.etat_hitman['position'] = etat_retourne['position']
-        self.etat_hitman['vision'] = etat_retourne['vision']
-        self.etat_hitman['nb_voix'] = etat_retourne['hear']
-        self.etat_hitman['malus'] = etat_retourne['penalties']
-        self.etat_hitman['est_vu_par_garde'] = etat_retourne['is_in_guard_range']
-        self.deduire_vue()
-        self.etat_hitman['champs_ecoute'] = self.calculer_champs_ecoute()
-        self.analyzer_local()
+        if self.peut_avancer() == True:
+            etat_retourne = self.arbitre.move()
+            self.etat_hitman['etat'] = etat_retourne['status']
+            self.etat_hitman['position'] = etat_retourne['position']
+            self.etat_hitman['vision'] = etat_retourne['vision']
+            self.etat_hitman['nb_voix'] = etat_retourne['hear']
+            self.etat_hitman['malus'] = etat_retourne['penalties']
+            self.etat_hitman['est_vu_par_garde'] = etat_retourne['is_in_guard_range']
+            self.deduire_vue()
+            self.etat_hitman['champs_ecoute'] = self.calculer_champs_ecoute()
+            #self.analyzer_local()
+        return self.etat_hitman
 
     def tourner_horaire(self):
         etat_retourne = self.arbitre.turn_clockwise()
@@ -87,7 +94,8 @@ class Solveur:
         self.etat_hitman['malus'] = etat_retourne['penalties']
         self.etat_hitman['est_vu_par_garde'] = etat_retourne['is_in_guard_range']
         self.deduire_vue()
-        self.analyzer_local()
+        #self.analyzer_local()
+        return self.etat_hitman
 
     def tourner_anti_horaire(self):
         etat_retourne = self.arbitre.turn_anti_clockwise()
@@ -97,7 +105,8 @@ class Solveur:
         self.etat_hitman['malus'] = etat_retourne['penalties']
         self.etat_hitman['est_vu_par_garde'] = etat_retourne['is_in_guard_range']
         self.deduire_vue()
-        self.analyzer_local()
+        #self.analyzer_local()
+        return self.etat_hitman
 
     def regles_sat_statiques(self):
         liste_regles = []
@@ -169,6 +178,23 @@ class Solveur:
 
         return liste_regles
 
+    def analyser_0_voix(self):
+        # il n' y a aucune personne non identifiee dans la zone d'ecoute
+        zone_a_analyser = {}  # Calcul de la zone a analyser: zones inconnues
+        for coord in self.etat_hitman['champs_ecoute']:
+            if self.infos_carte[coord] == None:
+                zone_a_analyser[coord] = [1, 2, 3, 4, 5, 6, 7, 8]
+        variables = []
+        for coord in zone_a_analyser.keys():
+            c = coord[0]
+            l = coord[1]
+            for var in zone_a_analyser[coord]:
+                variables.append(var + 13 * self.n * l + 13 * c)
+        for v in variables:
+            clause = "-" + str(v) + " -0"
+            if clause not in self.clauses:
+                self.clauses.append(clause)
+
     def analyser_1_voix(self):
         # il y a une personne non identifiee dans la zone d'ecoute
         zone_a_analyser = {} # Calcul de la zone a analyser: zones inconnues
@@ -196,7 +222,7 @@ class Solveur:
         # Tester SAT pour chaque clause unitaire: si on montre bottom en ajoutant la negation dans la KB, la clause est vraie
         for coord in zone_a_analyser.keys():
             for val in zone_a_analyser[coord].keys():
-                if self.test_gophersat("phase1.cnf", zone_a_analyser[coord][val]) == True:
+                if self.test_gophersat("analyse.cnf", zone_a_analyser[coord][val]) == True:
                     self.infos_carte[coord] = zone_a_analyser[coord][val]
         self.deduire_clauses_unitaires()
 
@@ -207,6 +233,8 @@ class Solveur:
                                            HC.CIVIL_S, HC.CIVIL_W]:
                 voix_deja_identifiees += 1
         match (self.etat_hitman['nb_voix'] - voix_deja_identifiees):
+            case 0:
+                self.analyser_0_voix()
             case 1:
                 self.analyser_1_voix()
 
@@ -286,16 +314,15 @@ class Solveur:
             fichier_dest.close()
             for l in lignes:
                 if "SATISFIABLE" in l:
-                    return l
+                    return True
+            return False
+    def fin_phase_1(self):
+        for (j, i) in self.infos_carte.keys():
+            if self.infos_carte[(j, i)] == None:
+                return False
+        return True
 
 def main():
-    try:
-        os.mkdir("tmp")
-    except:
-        pass
-    os.chdir("tmp")
-    saved_stdout = sys.stdout
-    sys.stdout = open('log.txt', 'w')
     arb = HitmanReferee()
     sv = Solveur(arb)
     print("Nombre de variables: " + str(sv.nb_variables))
@@ -305,6 +332,6 @@ def main():
     print(sv.infos_carte)
     print(sv.clauses)
     print(sv.test_gophersat_carte("phase1.cnf"))
-    sys.stdout = saved_stdout
 
-main()
+if __name__ == "__main__":
+    main()
