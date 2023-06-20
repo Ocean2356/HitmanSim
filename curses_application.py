@@ -1,4 +1,4 @@
-from hitman.hitman.hitman import HitmanReferee, HC
+from referee.hitman.hitman import HitmanReferee, HC
 from sat import Solveur
 import curses
 import time
@@ -126,9 +126,9 @@ class Application:
                     self.tourner_sens_antihoraire()
                 elif key == 100: # D
                     self.tourner_sens_horaire()
-                elif key == 113:
+                elif key == 113: # Q
                     break
-                time.sleep(0.03)
+                # time.sleep(0.03)
         except KeyboardInterrupt:
             curses.nocbreak()
 
@@ -136,18 +136,6 @@ def main(stdscr):
     arbitre = HitmanReferee()
     solveur = Solveur(arbitre)
     app = Application(solveur)
-
-    while True:
-        # Effacer l'écran
-        #app.scr.clear()
-
-        # Récupérer la saisie de l'utilisateur
-        c = stdscr.getch()
-
-        # Gérer la saisie de l'utilisateur (exemple : quitter avec la touche 'q')
-        if c == ord('q'):
-            break
-
 
 if __name__ == '__main__':
     curses.wrapper(main)
