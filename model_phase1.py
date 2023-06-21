@@ -45,15 +45,18 @@ class Model():
         self.frontier = [State(self.status['position'], self.status['orientation'])]
         self.map_info = {}
         self.listening_dist = 2
+        self.vision_dist = 3
         possible_offset = range(-self.listening_dist, self.listening_dist + 1)
         self.offsets_listening: List[Tuple(int, int)] = list(product(possible_offset, possible_offset))
         self.offsets_neighbour: List[Tuple(int, int)] = [(-1,0), (1,0), (0,-1), (0,1)]
+
         self.offsets_orientation = {
             hm.HC.N: (0, 1),
             hm.HC.E: (1, 0),
             hm.HC.S: (0, -1),
             hm.HC.W: (-1, 0),
         }
+
         self.Moveable = {
             hm.HC.EMPTY,
             hm.HC.CIVIL_N,
@@ -64,6 +67,7 @@ class Model():
             hm.HC.SUIT,
             hm.HC.PIANO_WIRE,
         }
+
         self.Person = {
             hm.HC.GUARD_N,
             hm.HC.GUARD_E,
@@ -74,6 +78,13 @@ class Model():
             hm.HC.CIVIL_S,
             hm.HC.CIVIL_W,
         }
+        
+        self.Unseen = {
+            hm.HC.UNKNOWN,
+            HC.NOT_PERSON,
+            HC.PERSON,
+        }
+
         for i in range(self.n):
             for j in range(self.m):
                 self.knowledge_hear[(i, j)] = HC.UNKNOWN
