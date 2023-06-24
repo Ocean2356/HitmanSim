@@ -16,7 +16,7 @@ class HC(Enum):
 class State():
     def __init__(self, position, orientation):
         self.position = position
-        self.orientation = orientation
+        self.orientation = hm.HC(orientation)
 
     def __eq__(self, other):
         return self.position == other.position and self.orientation == other.orientation
@@ -34,15 +34,18 @@ class State():
         return "({}, {})".format(self.position, self.orientation)
 
 
-class Model():
-    def __init__(self):
-        self.hr = hm.HitmanReferee()
+class Model1():
+    def __init__(self, hr):
+        self.hr = hr
         self.status = self.hr.start_phase1()
+        self.state = State(self.status['position'], self.status['orientation'])
+        self.gain = 0
+        self.previous_penalties = 0
         self.n = self.status['n']
         self.m = self.status['m']
         self.knowledge_hear = {}
         self.graph = {}
-        self.frontier = [State(self.status['position'], self.status['orientation'])]
+        self.frontier = [self.state]
         self.map_info = {}
         self.listening_dist = 2
         self.vision_dist = 3
@@ -80,7 +83,7 @@ class Model():
         }
         
         self.Unseen = {
-            hm.HC.UNKNOWN,
+            HC.UNKNOWN,
             HC.NOT_PERSON,
             HC.PERSON,
         }
@@ -98,6 +101,7 @@ class Model():
             case "w": self.status = self.hr.move()
             case "a": self.status = self.hr.turn_anti_clockwise()
             case "d": self.status = self.hr.turn_clockwise()
+            # case "s": self.do_send()
             case _: self.status['status'] = "Unknown movement, please enter w, a, or d"
         self.analyse_movement()
 
@@ -123,14 +127,14 @@ class Model():
         _, score, hist, map_content = self.hr.end_phase1()
         print("Score: {}".format(score))
         print("History: {}".format(hist))
-        print("Map content: {}".format(map_content))
+        # print("Map content: {}".format(map_content))
+        return all_correct, score, hist, map_content
 
     def analyse_movement(self):
         if self.status['status'] == "OK":
             self.knowledge_hear[self.status['position']] = self.status['hear']
             for (x, y), content in self.status['vision']:
-                if self.map_info[(x, y)] == HC.UNKNOWN:
-                    self.map_info[(x, y)] = content
+                self.map_info[(x, y)] = content
             self.deduce_listening(self.status['position'])
             if self.status['vision'] and self.status['vision'][-1][1] in self.Person:
                 pos_x, pos_y = self.status['vision'][-1][0]
@@ -187,12 +191,15 @@ class Model():
         return count, zone
 
     def left(self, state: State) -> State:
-        return State(state.position, (state.orientation.value - hm.HC.N.value + 1) % 4 + hm.HC.N.value)
+        o = hm.HC(state.orientation)
+        return State(state.position, (o.value - hm.HC.N.value + 3) % 4 + hm.HC.N.value)
     def right(self, state: State) -> State:
-        return State(state.position, (state.orientation.value - hm.HC.N.value + 3) % 4 + hm.HC.N.value)
+        o = hm.HC(state.orientation)
+        return State(state.position, (o.value - hm.HC.N.value + 1) % 4 + hm.HC.N.value)
     def forward(self, state: State) -> State:
         x0, y0 = state.position
-        x, y = self.offsets_orientation[state.orientation]
+        o = hm.HC(state.orientation)
+        x, y = self.offsets_orientation[o]
         return State((x0+x, y0+y), state.orientation)
         
     def moveable(self, state: State) -> bool:
@@ -209,16 +216,22 @@ class Model():
             if i not in self.graph:
                 self.frontier.append(i)
 
+    def update_gain(self):
+        self.gain -= self.status['penalties'] - self.previous_penalties
+        if self.status['vision'] and self.status['vision'][-1][1] != hm.HC.EMPTY:
+            self.gain += 2
+
     def update_graph(self):
-        state = State(self.status['position'], self.status['orientation'])
+        self.state = State(self.status['position'], self.status['orientation'])
         
-        if state in self.graph:
+        if self.state in self.graph:
             return
 
-        self.graph[state] = []
-        self.graph[state].append(self.left(state))
-        self.graph[state].append(self.right(state))
-        tmp = self.forward(state)
+        self.graph[self.state] = []
+        self.graph[self.state].append(self.left(self.state))
+        self.graph[self.state].append(self.right(self.state))
+        tmp = self.forward(self.state)
         if self.moveable(tmp):
-            self.graph[state].append(tmp)
-        self.update_frontier(state)
+            self.graph[self.state].append(tmp)
+        self.update_frontier(self.state)
+        self.update_gain()

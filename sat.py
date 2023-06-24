@@ -1,6 +1,9 @@
+import os
 import subprocess
 from referee.hitman.hitman import HitmanReferee, HC
 from itertools import product, combinations
+
+import sys
 
 '''
 Codage variables pour GopherSAT:
@@ -334,4 +337,7 @@ def main():
     print(sv.test_gophersat_carte("phase1.cnf"))
 
 if __name__ == "__main__":
+    path = "/tmp"
+    os.chdir(path)
+    sys.stdout = open("log.txt", "w")
     main()

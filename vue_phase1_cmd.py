@@ -1,11 +1,11 @@
 from model_phase1 import *
 
 class Vue:
-    def __init__(self, model: Model):
+    def __init__(self, model: Model1):
         self.model = model
         self.style = {
             hm.HC.EMPTY: " ",
-            hm.HC.WALL: "█",
+            hm.HC.WALL: "#",
             hm.HC.GUARD_N: "N",
             hm.HC.GUARD_E: "E",
             hm.HC.GUARD_S: "S",
@@ -26,12 +26,21 @@ class Vue:
         }
 
     def print_map(self):
+        print("+", end="")
+        for j in range(self.model.n):
+            print("-", end="")
+        print("+")
+        # print map
         for i in range(self.model.m - 1, -1, -1):
+            print("|", end="")
             for j in range(self.model.n):
                 if (j, i) == self.model.status['position']:
                     content = self.model.status['orientation']
                 else:
                     content = self.model.map_info[(j, i)]
                 print(self.style[content], end="")
-                if j == self.model.n - 1:
-                    print()
+            print("|")
+        print("+", end="")
+        for j in range(self.model.n):
+            print("-", end="")
+        print("+")
