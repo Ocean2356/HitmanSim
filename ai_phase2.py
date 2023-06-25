@@ -1,4 +1,4 @@
-from referee.hitman.hitman.hitman import *
+from referee.hitman.hitman import *
 
 demo_map = {
     (0,0): HC.EMPTY,
@@ -339,40 +339,41 @@ class AI2():
         return liste_voisins
 
     def a_etoile_phase2(self, noeud_depart, case_arrivee):
-        print("test a*")
+        # print("test a*")
         print("depart: ", noeud_depart)
         print("arrivee: ", case_arrivee)
         open_list = [noeud_depart]
         closed_list = []
         while len(open_list) != 0:
-            print("open list: ")
-            for i in open_list:
-                print(i['position'], i['orientation'], i['heuristique'])
+            # print("open list: ")
+            # for i in open_list:
+            #     print(i['position'], i['orientation'], i['heuristique'])
             u = open_list[0]
             open_list.pop(0)
             closed_list.append(u)
             if u['position'] == case_arrivee:
-                print("Closed list:", closed_list)
+                # print("Closed list:", closed_list)
                 return reconstituer_chemin(closed_list)
             voisins = self.voisins(u)
-            print("Case: ", u['orientation'], u['position'])
-            print("Voisins: ")
-            for v in voisins:
-                print(v['position'], v['orientation'])
-            print("Nombre voisins:", len(voisins))
+            # print("Case: ", u['orientation'], u['position'])
+            # print("Voisins: ")
+            # for v in voisins:
+            #     print(v['position'], v['orientation'])
+            # print("Nombre voisins:", len(voisins))
             nb_ajouts = 0
             for v in voisins:
-                print(type(open_list))
+                # print(type(open_list))
                 v['heuristique'] = v['cout'] + distance_manhattan(v['position'], case_arrivee)
                 if (existe_dans_closed_list(v, closed_list) == False and existe_dans_open_list_avec_cout_inferieur(v, open_list) == False):
                     inserer_open_list(open_list, v)
                     nb_ajouts += 1
-            print("Nb d'ajouts: ", nb_ajouts)
+            # print("Nb d'ajouts: ", nb_ajouts)
         print("Fail")
         return []
 
     def executer_phase2(self):
         # Etape 1: trouver costume
+        print("trouver costume")
         noeud_courant = {'parent': None, 'position': self.etat_hitman['position'],
                          'orientation': self.etat_hitman['orientation'],
                          'cout': 0}
@@ -392,6 +393,7 @@ class AI2():
         self.enfiler_costume()
 
         # Etape 2: trouver corde de piano
+        print("trouver corde")
         noeud_courant = {'parent': None, 'position': self.etat_hitman['position'],
                          'orientation': self.etat_hitman['orientation'],
                          'cout': 0}
@@ -410,6 +412,7 @@ class AI2():
         self.prendre_corde()
 
         # Etape 3: tuer cible
+        print("tuer cible")
         noeud_courant = {'parent': None, 'position': self.etat_hitman['position'],
                          'orientation': self.etat_hitman['orientation'],
                          'cout': 0}
@@ -428,6 +431,7 @@ class AI2():
         self.tuer_cible()
 
         # Etape 4: retour case depart
+        print("retour case depart")
         noeud_courant = {'parent': None, 'position': self.etat_hitman['position'],
                          'orientation': self.etat_hitman['orientation'],
                          'cout': 0}

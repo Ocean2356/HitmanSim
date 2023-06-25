@@ -2,7 +2,7 @@ from model_phase1 import *
 from vue_phase1_cmd import *
 
 class AI1():
-    def __init__(self, model, cl = 1, cv = 0.5, cm = 0.5, cp = 1, dm = 4):
+    def __init__(self, model, cl = 0.5, cv = 3, cm = 1, cp = 3, dm = 8):
         self.model = model
         self.penalties_max = model.n * model.m * 1
         self.constant_listening = cl
@@ -99,7 +99,7 @@ def main():
     hr = hm.HitmanReferee()
     model = Model1(hr)
     vue = Vue(model)
-    ai1 = AI1(model, cl = 1, cv = 2, cm = 1, cp = 1)
+    ai1 = AI1(model)
 
     vue.print_map()
     while model.gain > -ai1.penalties_max:

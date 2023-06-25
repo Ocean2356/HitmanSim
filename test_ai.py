@@ -6,7 +6,7 @@ def main():
     hr = hm.HitmanReferee()
     model = Model1(hr)
     vue = Vue(model)
-    ai1 = AI1(model)
+    ai1 = AI1(model, cl = 0.5, cv = 3, cm = 1, cp = 3, dm = 8)
 
     vue.print_map()
     while model.gain > -ai1.penalties_max:
@@ -20,10 +20,10 @@ def main():
         model.update_graph()
         vue.print_map()
 
-    #  = model.do_send()
     all_correct, score, hist, map_content = model.do_send()
     print("Final gain:", model.gain)
 
+    print("\nStart phase 2...")
     ai2 = AI2(hr, map_content)
     ai2.executer_phase2()
     print(ai2.etat_hitman)

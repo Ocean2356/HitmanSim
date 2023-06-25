@@ -178,6 +178,7 @@ class Model1():
 
         self.knowledge_hear[self.status['position']] = self.status['hear']
 
+        self.analyze_local()
         self.deduire_clauses_unitaires()
         self.update_graph()
 
@@ -214,7 +215,7 @@ class Model1():
         # il y a une personne non identifiee dans la zone d'ecoute
         zone_a_analyser = {} # Calcul de la zone a analyser: zones inconnues
         for coord in self.calculate_hear_range():
-            if self.map_info[coord] == None:
+            if self.map_info[coord] == HC.UNKNOWN:
                 zone_a_analyser[coord] = {hm.HC.GUARD_N: 0, hm.HC.GUARD_E: 0, hm.HC.GUARD_S: 0, hm.HC.GUARD_W: 0,
                                           hm.HC.CIVIL_N: 0, hm.HC.CIVIL_E: 0, hm.HC.CIVIL_S: 0, hm.HC.CIVIL_W: 0}
         variables = []
@@ -237,7 +238,7 @@ class Model1():
         # Tester SAT pour chaque clause unitaire: si on montre bottom en ajoutant la negation dans la KB, la clause est vraie
         for coord in zone_a_analyser.keys():
             for val in zone_a_analyser[coord].keys():
-                if self.test_gophersat("analyse.cnf", zone_a_analyser[coord][val]) == True:
+                if self.test_gophersat("analyse.cnf", zone_a_analyser[coord][val]) == False:
                     self.map_info[coord] = val
                     break
         self.deduire_clauses_unitaires()
