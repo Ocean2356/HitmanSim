@@ -1,7 +1,7 @@
 from model_phase1 import *
 
 class Vue:
-    def __init__(self, model: Model1):
+    def __init__(self, model):
         self.model = model
         self.style = {
             hm.HC.EMPTY: " ",

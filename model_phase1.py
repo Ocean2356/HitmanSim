@@ -9,8 +9,8 @@ class HC(Enum):
     NOT_PERSON = 0
     PERSON = 18
     
-    NOT_FRONTIER = 0
-    FRONTIER = 1
+    # NOT_FRONTIER = 0
+    # FRONTIER = 1
 
 
 class State():
@@ -43,10 +43,14 @@ class Model1():
         self.previous_penalties = 0
         self.n = self.status['n']
         self.m = self.status['m']
+
         self.knowledge_hear = {}
         self.graph = {}
         self.frontier = [self.state]
         self.map_info = {}
+        self.garde_seen = {}
+        self.penalties = {}
+
         self.listening_dist = 2
         self.vision_dist = 3
         possible_offset = range(-self.listening_dist, self.listening_dist + 1)
@@ -58,7 +62,15 @@ class Model1():
             hm.HC.E: (1, 0),
             hm.HC.S: (0, -1),
             hm.HC.W: (-1, 0),
-        }
+            hm.HC.GUARD_N: (0, 1),
+            hm.HC.GUARD_E: (1, 0),
+            hm.HC.GUARD_S: (0, -1),
+            hm.HC.GUARD_W: (-1, 0),
+            hm.HC.CIVIL_N: (0, 1),
+            hm.HC.CIVIL_E: (1, 0),
+            hm.HC.CIVIL_S: (0, -1),
+            hm.HC.CIVIL_W: (-1, 0),
+        } 
 
         self.Moveable = {
             hm.HC.EMPTY,
@@ -81,6 +93,13 @@ class Model1():
             hm.HC.CIVIL_S,
             hm.HC.CIVIL_W,
         }
+
+        self.Garde = {
+            hm.HC.GUARD_N,
+            hm.HC.GUARD_E,
+            hm.HC.GUARD_S,
+            hm.HC.GUARD_W,
+        }
         
         self.Unseen = {
             HC.UNKNOWN,
@@ -93,6 +112,7 @@ class Model1():
                 self.knowledge_hear[(i, j)] = HC.UNKNOWN
                 # self.frontier[(i, j)] = HC.NOT_FRONTIER
                 self.map_info[(i, j)] = HC.UNKNOWN
+                self.penalties[(i, j)] = 0
         self.analyse_movement()
         self.map_info[(0, 0)] = hm.HC.EMPTY
         
@@ -131,20 +151,38 @@ class Model1():
         return all_correct, score, hist, map_content
 
     def analyse_movement(self):
-        if self.status['status'] == "OK":
-            self.knowledge_hear[self.status['position']] = self.status['hear']
-            for (x, y), content in self.status['vision']:
-                self.map_info[(x, y)] = content
-            self.deduce_listening(self.status['position'])
-            if self.status['vision'] and self.status['vision'][-1][1] in self.Person:
-                pos_x, pos_y = self.status['vision'][-1][0]
-                for i, j in self.offsets_listening:
-                    position = (pos_x + i, pos_y + j)
-                    if position in self.map_info:
-                        self.deduce_listening(position)
-            self.update_graph()
-        else:
+        if self.status['status'] != "OK":
             print(self.status['status'])
+            return
+
+        if self.status['vision'] and self.status['vision'][-1][1] != hm.HC.EMPTY and self.map_info[self.status['vision'][-1][0]] in self.Unseen:
+            self.gain += 2
+            if self.status['vision'][-1][1] in self.Garde:
+                self.garde_seen[self.status['vision'][-1][0]] = self.status['vision'][-1][1]
+        
+        for (x, y), content in self.status['vision']:
+            self.map_info[(x, y)] = content
+
+        self.knowledge_hear[self.status['position']] = self.status['hear']
+
+        self.update_graph()
+
+    def analyse_voice(self):
+        self.deduce_listening(self.status['position'])
+
+        if self.status['vision'] and self.status['vision'][-1][1] in self.Person:
+            pos = self.status['vision'][-1][0]
+            champs = self.calculer_champs_ecoute(pos)
+            for c in champs:
+                self.deduce_listening(c)
+
+    def calculer_champs_ecoute(self, position: Tuple[int, int]):
+        champs = []
+        for i, j in self.offsets_listening:
+            new_case = (position[0] + i, position[1] + j)
+            if new_case in self.map_info:
+                champs.append(new_case)
+        return champs
 
     def deduce_listening(self, position: Tuple[int, int]):
         if self.knowledge_hear[position] == HC.UNKNOWN:
@@ -175,16 +213,7 @@ class Model1():
             if pos_x >= self.status['n'] or pos_y >= self.status['m'] or pos_x < 0 or pos_y < 0:
                 continue
             zone.append((pos_x, pos_y))
-            if self.map_info[(pos_x, pos_y)] in [
-                hm.HC.CIVIL_N,
-                hm.HC.CIVIL_E,
-                hm.HC.CIVIL_S,
-                hm.HC.CIVIL_W,
-                hm.HC.GUARD_N,
-                hm.HC.GUARD_E,
-                hm.HC.GUARD_S,
-                hm.HC.GUARD_W,
-            ]:
+            if self.map_info[(pos_x, pos_y)] in self.Person:
                 count += 1
             if count == 5:
                 break
@@ -217,9 +246,10 @@ class Model1():
                 self.frontier.append(i)
 
     def update_gain(self):
-        self.gain -= self.status['penalties'] - self.previous_penalties
-        if self.status['vision'] and self.status['vision'][-1][1] != hm.HC.EMPTY:
-            self.gain += 2
+        self.penalties[self.status['position']] = -(self.status['penalties'] - self.previous_penalties)
+        self.gain += self.penalties[self.status['position']]
+        self.previous_penalties = self.status['penalties']
+        # print(self.penalties)
 
     def update_graph(self):
         self.state = State(self.status['position'], self.status['orientation'])

@@ -2,16 +2,17 @@ from model_phase1 import *
 from vue_phase1_cmd import *
 
 class AI1():
-    def __init__(self, model):
+    def __init__(self, model, cl = 1, cv = 0.5, cm = 0.5, cp = 1, dm = 4):
         self.model = model
-        self.constant_listening = 1
-        self.constant_vision = 0.5
-        self.constant_movement = 0.5
-        self.depth_max = 4
         self.penalties_max = model.n * model.m * 1
+        self.constant_listening = cl
+        self.constant_vision = cv
+        self.constant_movement = cm
+        self.constant_penalties = cp
+        self.depth_max = dm
 
     def heuristic_listening(self, state: State):
-        return (state.position in self.model.knowledge_hear) * self.constant_listening
+        return (state.position in self.model.knowledge_hear) 
 
     def heuristic_vision(self, state: State):
         nb_vision = 0
@@ -23,7 +24,7 @@ class AI1():
                 break
             if self.model.map_info[(pos_x, pos_y)] in self.model.Unseen:
                 nb_vision += 1
-        return nb_vision * self.constant_vision
+        return nb_vision
         
     def heuristic_movement(self, state: State):
         nb_movement = 0
@@ -36,7 +37,12 @@ class AI1():
         for state in lst_state:
             if state not in self.model.graph:
                 nb_movement += 1
-        return nb_movement * self.constant_movement
+        return nb_movement 
+
+    def heuristic_penalties(self, state: State):
+        if self.model.penalties[state.position] > 0:
+            return -1 - self.model.penalties[state.position]
+        return self.model.penalties[state.position]
 
     def calculate_movement(self, before: State, after: State):
         if self.model.left(before) == after:
@@ -59,16 +65,19 @@ class AI1():
             for s in self.model.graph[tmp_state]:
                 if s not in self.model.frontier:
                     queue.append(s)
-                    father_state[s] = tmp_state
+                    if s not in father_state:
+                        father_state[s] = tmp_state
                     continue
                 if s in dict_heuristic:
                     continue
-                l = self.heuristic_listening(s)
-                v = self.heuristic_vision(s)
-                m = self.heuristic_movement(s)
-                h = l + v + m - i
+                l = self.heuristic_listening(s) * self.constant_listening
+                v = self.heuristic_vision(s) * self.constant_vision
+                m = self.heuristic_movement(s) * self.constant_movement
+                p = self.heuristic_penalties(s) * self.constant_penalties
+                h = l + v + m + p - i
                 dict_heuristic[s] = h
-                father_state[s] = tmp_state
+                if s not in father_state:
+                    father_state[s] = tmp_state
                 # print(s, tmp_state)
         if len(dict_heuristic) == 0:
             return []
@@ -90,10 +99,11 @@ def main():
     hr = hm.HitmanReferee()
     model = Model1(hr)
     vue = Vue(model)
-    ai1 = AI1(model)
+    ai1 = AI1(model, cl = 1, cv = 2, cm = 1, cp = 1)
 
     vue.print_map()
     while model.gain > -ai1.penalties_max:
+        print("Gain:", model.gain)
         movement = ai1.heuristic(model.state)
         print(movement)
         if len(movement) == 0:
