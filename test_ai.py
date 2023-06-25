@@ -24,7 +24,7 @@ def main():
     all_correct, score, hist, map_content = model.do_send()
     print("Final gain:", model.gain)
 
-    ai2 = AI2(hr, model.map_info)
+    ai2 = AI2(hr, map_content)
     ai2.executer_phase2()
     print(ai2.etat_hitman)
     print(ai2.resultat_phase2())
