@@ -44,6 +44,15 @@ Faiblesses :
 - Les paramètres de pondération des heuristiques sont déterminés manuellement, ce qui n'est pas optimal.
 - La structure du projet n'est pas bien dessinée au début, ce qui a entraîné des fonctions redondantes dans la partie SAT. Mais d'après notre observation, la partie génération de règles SAT et appel de solveur est la plus coûteuse en temps de calcul, donc c'est plus intéressant de combiner les codes rapidement que de les uniformiser.
 
+### Phase 2
+
+Forces:
+
+- Algorithme A* efficace et performant
+
+Faiblesses:
+- Le choix d'effectuer la recherche du costume en amont est arbitraire: il n'est pas gratifiant dans tous les cas.
+
 ## Modélisation SAT de la phase 1
 
 ### Variables
@@ -199,3 +208,12 @@ EFFECT: ¬At(String, x, y), At(Empty, x, y), State(String, acquired))
 ## Programmation Python phase 2
 
 Algorithme de parcours utilisé: A*
+
+Pour l'exécution de la phase 2, nous avons procédé en plusieurs étapes:
+  étape 1: chercher le costume et l'enfiler;
+  étape 2: chercher la corde de piano;
+  étape 3: chercher la cible et l'éliminer;
+  étape finale: retourner vers la case de départ.
+
+Chaque étape est réalisée grâce à un algorithme A* qui retourne un chemin avec des actions à exécuter à la suite. Toutes les fonctionnalites necessaires sont implementees dans une classe nommee AI2. À la fin de la phase 2, une méthode résultat() permet de renvoyer le résultat de la mission.
+
